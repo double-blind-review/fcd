@@ -22,7 +22,7 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   }
   // ###########################################################################
   // ######################## ATX Heading Tetsts ###############################
-// ###########################################################################
+  // ###########################################################################
   describe ("Simple headings:") {
     atxHeading shouldParseWith (
       "# foo\n",
@@ -131,6 +131,105 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
       (1, List())
     )
   }
+  // ###########################################################################
+  // ######################### Code Block Tests ################################
+  // ###########################################################################
+  describe ("a simple Code Block parser") {
+    indentedCodeBlock shouldParseWith  (
+      "    a simple\n      indented code block\n",
+      "a simple\n  indented code block\n".toList
+    )
+  }
+  describe ("The contents of a code block are literal text, and do not get parsed as Markdown:") {
+    indentedCodeBlock shouldParseWith  (
+      """|    <a/>
+         |    *hi*
+         |
+         |    - one \n""".stripMargin('|'),
+      """|<a/>
+         |*hi*
+         |
+         |- one""".stripMargin('|').toList
+    )
+  }
+  describe ("Here we have three chunks separated by blank lines:") {
+    indentedCodeBlock shouldParseWith  (
+      """|    chunk1
+         |
+         |    chunk2
+         |
+         |
+         |
+         |    chunk3 \n""".stripMargin('|'),
+      """|chunk1
+         |
+         |chunk2
+         |
+         |
+         |
+         |chunk3""".stripMargin('|').toList
+    )
+  }
 
 
+  // ###########################################################################
+  // ####################### Block Detection Tests #############################
+  // ###########################################################################
+/*
+  describe ("ATX headings can be empty:") {
+    blockParser shouldParseWith  (
+      """|Foo bar
+         |# baz
+         |Bar foo
+         |""".stripMargin('|'),
+      """|<p>Foo bar</p>
+         |<h1>baz</h1>
+         |<p>Bar foo</p>""".stripMargin('|').toList
+    )
+    blockParser shouldParseWith (
+      """|****
+         |## foo
+         |****
+         |""".stripMargin('|'),
+      """|<hr />
+         |<h2>foo</h2>
+         |<hr />""".stripMargin('|').toList
+    )
+  }
+  describe ("Four spaces are too much:") {
+    blockParser shouldParseWith  (
+      """|foo
+         |    # bar
+         |""".stripMargin('|'),
+      """|<p>foo
+         |# bar</p>""".stripMargin('|').toList
+    )
+  }
+  describe ("f there is any ambiguity between an interpretation of indentation as a code block and as indicating that material belongs to a list item, the list item interpretation takes precedence:") {
+    blockParser shouldParseWith  (
+      """|  - foo
+         |
+         |    bar""".stripMargin('|'),
+      """|<ul>
+         |<li>
+         |<p>foo</p>
+         |<p>bar</p>
+         |</li>
+         |</ul>""".stripMargin('|').toList
+    )
+    blockParser shouldParseWith  (
+      """|1.  foo
+         |
+         |    - bar""".stripMargin('|'),
+      """|<ol>
+         |<li>
+         |<p>foo</p>
+         |<ul>
+         |<li>bar</li>
+         |</ul>
+         |</li>
+         |</ul>""".stripMargin('|').toList
+    )
+  }
+*/
 }
