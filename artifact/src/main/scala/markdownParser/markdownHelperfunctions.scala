@@ -3,8 +3,8 @@ package markdown
 
 trait MarkdownHelperfunctions{ self: RichParsers =>
 
-  def biasedAlt[T](p: Parser[T], q: Parser[T]): Parser[T] =
-    p | not(p ~ many(any)) &> q
+  //def biasedAlt[T](p: Parser[T], q: Parser[T]): Parser[T] =
+  //  p | not(p ~ many(any)) &> q
 
   // TODO: ist es möglich ein Parser zu haben der genau 0 zeichen liest?
 
