@@ -3,7 +3,9 @@ package markdown
 
 trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
 
-  // ATX heading
+  // ###########################################################################
+  // ########################### ATX Heading  ##################################
+  // ###########################################################################
   class Heading(o: Int, a: List[Char]) {
     //println("Anzahl der #: " + o + "\nInhalt der Ueberschrift: " + a);
     print("<h" + o + ">");
@@ -28,12 +30,38 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
     not(some(space) ~ many(any)) &> (many(no('#')) &> inlineParser) <&
     not(many(any) ~ some(space))
 
+  // ###########################################################################
+  // ############################ Code Block  #############ää###################
+  // ###########################################################################
+  class CodeBlock(a: List[Char]) {
+    // println("Inhalt des Code Blocks: " + a);
+    print("<pre><code>");
+    a.foreach(print);
+    print("</code></pre>\n");
+  }
 
+  lazy val emptyLine =
+    many(space) ~> newline 
+
+  lazy val codeBlockContent =
+    many(no('\n')) <& not(many(no('\n')) ~ some(space))
+
+  lazy val codeBlockLine =
+    manyN(4, ' ') ~> codeBlockContent <~ many(space) ~ newline ^^ {
+      case(a: List[Char]) => a ++ List('\n')
+    }
+
+  lazy val indentedCodeBlock =
+    (codeBlockLine ~ many(biasedAlt(emptyLine,codeBlockLine))) ^^ {
+      case (first: List[Char], rest: List[List[Char]]) => first ++ rest.flatten
+    }
 
   // Hier könnte ihr Markdown Inline Parser stehen
   lazy val inlineParser =
     many(any)
-
+    // TODO: Blockparser schreiben
+    lazy val blockParser =
+      many(any)
 }
 
 object MarkdownParsers extends MarkdownParsers with RichParsers with DerivativeParsers with MarkdownHelperfunctions
