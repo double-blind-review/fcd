@@ -40,19 +40,22 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
     print("</code></pre>\n");
   }
 
-  lazy val emptyLine =
-    many(space) ~> newline 
+  lazy val emptyLine : Parser[List[Char]] =
+    biasedAlt((manyN(4, ' ') ~> many(space) ~ newline) , (many(space) ~> newline)) ^^ {
+      case (a: Char) => List(a);
+      case (p:List[Char], ps:Char) => p ++ List(ps)
+    }
 
   lazy val codeBlockContent =
-    many(no('\n')) <& not(many(no('\n')) ~ some(space))
+    some(no('\n'))
 
-  lazy val codeBlockLine =
-    manyN(4, ' ') ~> codeBlockContent <~ many(space) ~ newline ^^ {
+  lazy val codeBlockLine: Parser[List[Char]] =
+    manyN(4, ' ') ~> codeBlockContent <~ newline ^^ {
       case(a: List[Char]) => a ++ List('\n')
     }
 
   lazy val indentedCodeBlock =
-    (codeBlockLine ~ many(biasedAlt(emptyLine,codeBlockLine))) ^^ {
+    (codeBlockLine ~ many(biasedAlt(emptyLine, codeBlockLine))) ^^ {
       case (first: List[Char], rest: List[List[Char]]) => first ++ rest.flatten
     }
 
