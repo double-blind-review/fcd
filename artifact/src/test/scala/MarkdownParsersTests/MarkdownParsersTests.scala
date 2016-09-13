@@ -142,32 +142,32 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   }
   describe ("The contents of a code block are literal text, and do not get parsed as Markdown:") {
     indentedCodeBlock shouldParseWith  (
-      """|    <a/>
-         |    *hi*
-         |
-         |    - one \n""".stripMargin('|'),
-      """|<a/>
-         |*hi*
-         |
-         |- one""".stripMargin('|').toList
+      "    <a/>\n    *hi*\n\n    - one \n",
+      "<a/>\n*hi*\n\n- one \n".toList
     )
   }
   describe ("Here we have three chunks separated by blank lines:") {
     indentedCodeBlock shouldParseWith  (
-      """|    chunk1
-         |
-         |    chunk2
-         |
-         |
-         |
-         |    chunk3 \n""".stripMargin('|'),
-      """|chunk1
-         |
-         |chunk2
-         |
-         |
-         |
-         |chunk3""".stripMargin('|').toList
+      "    chunk1\n\n    chunk2\n  \n \n \n    chunk3 \n",
+      "chunk1\n\nchunk2\n\n\n\nchunk3 \n".toList
+    )
+  }
+  describe ("Any initial spaces beyond four will be included in the content, even in interior blank lines:") {
+    indentedCodeBlock shouldParseWith  (
+      "    chunk1\n      \n      chunk2\n",
+      "chunk1\n  \n  chunk2\n".toList
+    )
+  }
+  describe ("Trailing spaces are included in the code block’s content:") {
+    indentedCodeBlock shouldParseWith  (
+      "    foo  \n",
+      "foo  \n".toList
+    )
+  }
+  describe ("The first line can be indented more than four spaces:") {
+    indentedCodeBlock shouldParseWith  (
+      "        foo\n    bar\n",
+      "    foo\nbar\n".toList
     )
   }
 
@@ -230,6 +230,12 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
          |</li>
          |</ul>""".stripMargin('|').toList
     )
+    describe ("An indented code block cannot interrupt a paragraph. ") {
+      indentedCodeBlock shouldParseWith  (
+        "Foo\n    bar\n",
+        "Foo\nbar".toList
+      )
+    }
   }
 */
 }
