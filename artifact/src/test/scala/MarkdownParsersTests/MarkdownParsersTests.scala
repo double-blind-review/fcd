@@ -269,7 +269,7 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   // Infostrings werden nicht implementiert!
 
   // ###########################################################################
-  // ####################### Thematic breaks Tests #############################
+  // ####################### Thematic Breaks Tests #############################
   // ###########################################################################
   describe ("A line consisting of 0-3 spaces of indentation, followed by a sequence of three or more matching -, _, or * characters, each followed optionally by any number of spaces, forms a thematic break:") {
     thematicBreak shouldParse  ("***\n")
