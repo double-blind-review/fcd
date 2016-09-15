@@ -314,6 +314,117 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   }
 
   // ###########################################################################
+  // ######################## Setext Heading Tests #############################
+  // ###########################################################################
+  describe ("Simple examples:") {
+    setextHeading shouldParseWith  (
+      "Foo *bar*\n=========\n",
+      (1, "Foo *bar*\n".toList)
+    )
+    setextHeading shouldParseWith  (
+      "Foo *bar*\n---------\n",
+      (2 ,"Foo *bar*\n".toList)
+    )
+  }
+  describe ("Simple examples:") {
+    setextHeading shouldParseWith  (
+      "Foo *bar\nbaz*\n=========\n",
+      (1, "Foo *bar\nbaz*\n".toList)
+    )
+  }
+  describe ("The underlining can be any length:") {
+    setextHeading shouldParseWith  (
+      "Foo\n-------------------------\n",
+      (2, "Foo\n".toList)
+    )
+    setextHeading shouldParseWith  (
+      "Foo\n=\n",
+      (1, "Foo\n".toList)
+    )
+  }
+  describe ("The heading content can be indented up to three spaces, and need not line up with the underlining:") {
+    setextHeading shouldParseWith  (
+      "   Foo\n---\n",
+      (2, "Foo\n".toList)
+    )
+    setextHeading shouldParseWith  (
+      "  Foo\n-----\n",
+      (2, "Foo\n".toList)
+    )
+    setextHeading shouldParseWith  (
+      "  Foo\n  ==\n",
+      (1, "Foo\n".toList)
+    )
+  }
+  describe ("Four spaces indent is too much:") {
+    setextHeading shouldNotParse  (
+      "    Foo\n    ---\n"
+    )
+    setextHeading shouldNotParse  (
+      "    Foo\n----\n"
+    )
+  }
+  describe ("The setext heading underline can be indented up to three spaces, and may have trailing spaces:") {
+    setextHeading shouldParseWith  (
+      "Foo\n   ----      \n",
+      (2, "Foo\n".toList)
+    )
+  }
+  describe ("Four spaces is too much:") {
+    setextHeading shouldNotParse (
+      "Foo\n    ----\n"
+    )
+  }
+  describe ("The setext heading underline cannot contain internal spaces:") {
+    setextHeading shouldNotParse (
+      "Foo\n= =\n"
+    )
+    setextHeading shouldNotParse (
+      "Foo\n--- -\n"
+    )
+  }
+
+  // ###########################################################################
+  // ########################## Paragraphs Tests ###############################
+  // ###########################################################################
+  describe ("A simple example with two paragraphs:") {
+    paragraph shouldParseWith (
+      "aaa\n",
+      "aaa\n".toList
+    )
+  }
+  describe ("Paragraphs can contain multiple lines, but no blank lines:") {
+    paragraph shouldNotParse (
+      "aaa\nbbb\n\n"
+    )
+    paragraph shouldParseWith (
+      "ccc\nddd\n",
+      "ccc\nddd\n".toList
+    )
+  }
+  describe ("Leading spaces are skipped:") {
+    paragraph shouldParseWith (
+      "  aaa\n bbb\n",
+      "aaa\nbbb\n".toList
+    )
+  }
+  describe ("Lines after the first may be indented any amount, since indented code blocks cannot interrupt paragraphs.") {
+    paragraph shouldParseWith (
+      "aaa\n             bbb\n                                       ccc\n",
+      "aaa\nbbb\nccc\n".toList
+    )
+
+  }
+  describe ("However, the first line may be indented at most three spaces, or an indented code block will be triggered:") {
+    paragraph shouldParseWith (
+      "   aaa\nbbb\n",
+      "aaa\nbbb\n".toList
+    )
+    paragraph shouldNotParse (
+      "    aaa\nbbb\n"
+    )
+  }
+  // ###########################################################################
   // ####################### Block Detection Tests #############################
   // ###########################################################################
 /*
