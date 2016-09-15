@@ -102,6 +102,30 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
     repeat(' ', 0, 3) ~> '-' ~ many(space) ~ '-' ~ many(space) ~ '-' ~ many(space) ~ many(space|'-')  <~ newline |
     repeat(' ', 0, 3) ~> '_' ~ many(space) ~ '_' ~ many(space) ~ '_' ~ many(space) ~ many(space|'_')  <~ newline
 
+  // ###########################################################################
+  // ######################## setext Heading ###################################
+  // ###########################################################################
+  lazy val setextHeading =
+    paragraph ~ setextUnderline ^^ {case (a,b) => (b,a)}
+
+  lazy val setextUnderline =
+    repeat(' ', 0, 3) ~> min('-', 1) <~ many(space) ~ newline ^^ {case a => 2} |
+    repeat(' ', 0, 3) ~> min('=', 1) <~ many(space) ~ newline ^^ {case a => 1}
+
+  // ###########################################################################
+  // ########################### Paragraph #####################################
+  // ###########################################################################
+
+  lazy val paragraph: Parser[List[Char]] =
+    (repeat(' ', 0, 3) ~> paragraphContent ~
+    many(many(space) ~> paragraphContent)) ^^ {
+      case (a: List[Char], b: List[List[Char]]) => a ::: b.flatten
+    }
+
+  lazy val paragraphContent: Parser[List[Char]] =
+    no(' ') ~  many(no('\n')) <~ newline ^^ {
+      case (a: Char, b: List[Char]) => List(a) ++ b ++ List('\n')
+    }
 
   // Hier könnte ihr Markdown Inline Parser stehen
   lazy val inlineParser =
