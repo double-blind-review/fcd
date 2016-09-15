@@ -91,6 +91,16 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
     biasedAlt(prefix ~> (not(prefix ~ many(any)) &> content), content)
   }
 
+  // ###########################################################################
+  // ######################## Thematic Breaks ##################################
+  // ###########################################################################
+  lazy val thematicBreak =
+    repeat(' ', 0, 3) ~> min('*', 3) ~ many(space) ~ newline |
+    repeat(' ', 0, 3) ~> min('-', 3) ~ many(space) ~ newline |
+    repeat(' ', 0, 3) ~> min('_', 3) ~ many(space) ~ newline |
+    repeat(' ', 0, 3) ~> '*' ~ many(space) ~ '*' ~ many(space) ~ '*' ~ many(space) ~ many(space|'*')  <~ newline |
+    repeat(' ', 0, 3) ~> '-' ~ many(space) ~ '-' ~ many(space) ~ '-' ~ many(space) ~ many(space|'-')  <~ newline |
+    repeat(' ', 0, 3) ~> '_' ~ many(space) ~ '_' ~ many(space) ~ '_' ~ many(space) ~ many(space|'_')  <~ newline
 
 
   // Hier könnte ihr Markdown Inline Parser stehen
