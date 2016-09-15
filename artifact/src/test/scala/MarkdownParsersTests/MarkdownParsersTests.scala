@@ -132,7 +132,7 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
     )
   }
   // ###########################################################################
-  // ######################### Code Block Tests ################################
+  // #################### Indented Code Block Tests ############################
   // ###########################################################################
   describe ("a simple Code Block parser") {
     indentedCodeBlock shouldParseWith  (
@@ -170,7 +170,148 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
       "    foo\nbar\n".toList
     )
   }
+  // ###########################################################################
+  // ##################### Fenced Code Block Tests #############################
+  // ###########################################################################
+  describe ("Here is a simple example with backticks:") {
+    fencedCodeBlock shouldParseWith  (
+      "```\n<\n >\n```\n",
+      "<\n >\n".toList
+    )
+  }
+  describe ("Here is a simple example with tildes:") {
+    fencedCodeBlock shouldParseWith  (
+      "~~~\n<\n >\n~~~\n",
+      "<\n >\n".toList
+    )
+  }
+  describe ("The closing code fence must use the same character as the opening fence:") {
+    fencedCodeBlock shouldParseWith  (
+      "```\naaa\n~~~\n```\n",
+      "aaa\n~~~\n".toList
+    )
+    fencedCodeBlock shouldParseWith  (
+      "~~~\naaa\n```\n~~~\n",
+      "aaa\n```\n".toList
+    )
+  }
+  describe ("The closing code fence must be at least as long as the opening fence:") {
+    fencedCodeBlock shouldParseWith  (
+      "````\naaa\n```\n``````\n",
+      "aaa\n```\n".toList
+    )
+    fencedCodeBlock shouldParseWith  (
+      "~~~~\naaa\n~~~\n~~~~\n",
+      "aaa\n~~~\n".toList
+    )
+  }
+  describe ("Unclosed code blocks are closed by the end of the document:") {
+    fencedCodeBlock shouldParseWith  (
+      "```\n",
+      "".toList
+    )
+    fencedCodeBlock shouldParseWith  (
+      "`````\n\n```\naaa\n",
+      "\n```\naaa\n".toList
+    )
+  }
+  describe ("A code block can have all empty lines as its content:") {
+    fencedCodeBlock shouldParseWith  (
+      "```\n\n  \n```\n",
+      "\n  \n".toList
+    )
+  }
+  describe ("Fences can be indented. If the opening fence is indented, content lines will have equivalent opening indentation removed, if present:") {
+    fencedCodeBlock shouldParseWith  (
+      " ```\n aaa\naaa\n```\n",
+      "aaa\naaa\n".toList
+    )
+    fencedCodeBlock shouldParseWith  (
+      "  ```\naaa\n  aaa\naaa\n  ```\n",
+      "aaa\naaa\naaa\n".toList
+    )
+    fencedCodeBlock shouldParseWith  (
+      "   ```\n   aaa\n    aaa\n  aaa\n   ```\n",
+      "aaa\n aaa\naaa\n".toList
+    )
+  }
+  describe ("Four spaces indentation produces an indented code block:") {
+    fencedCodeBlock shouldNotParse  (
+      "    ```\n    aaaa\n    ```\n"
+    )
+  }
+  describe ("Closing fences may be indented by 0-3 spaces, and their indentation need not match that of the opening fence:") {
+    fencedCodeBlock shouldParseWith  (
+      "```\naaa\n  ```\n",
+      "aaa\n".toList
+    )
+    fencedCodeBlock shouldParseWith  (
+      "   ```\naaa\n  ```\n",
+      "aaa\n".toList
+    )
+  }
+  describe ("This is not a closing fence, because it is indented 4 spaces:") {
+    fencedCodeBlock shouldParseWith  (
+      "```\naaa\n    ```\n",
+      "aaa\n    ```\n".toList
+    )
+  }
+  describe ("Code fences (opening and closing) cannot contain internal spaces:") {
+    fencedCodeBlock shouldNotParse  (
+      "``` ```\naaa\n"
+    )
+    fencedCodeBlock shouldParseWith  (
+      "~~~~~~\naaa\n~~~ ~~\n",
+      "aaa\n~~~ ~~\n".toList
+    )
+  }
 
+  // Infostrings werden nicht implementiert!
+
+  // ###########################################################################
+  // ####################### Thematic breaks Tests #############################
+  // ###########################################################################
+  describe ("A line consisting of 0-3 spaces of indentation, followed by a sequence of three or more matching -, _, or * characters, each followed optionally by any number of spaces, forms a thematic break:") {
+    thematicBreak shouldParse  ("***\n")
+    thematicBreak shouldParse  ("---\n")
+    thematicBreak shouldParse  ("___\n")
+  }
+  describe ("Wrong characters:") {
+    thematicBreak shouldNotParse  ("+++\n")
+    thematicBreak shouldNotParse  ("===\n")
+  }
+  describe ("Not enough characters:") {
+    thematicBreak shouldNotParse  ("--\n")
+    thematicBreak shouldNotParse  ("**\n")
+    thematicBreak shouldNotParse  ("__\n")
+  }
+  describe ("One to three spaces indent are allowed:") {
+    thematicBreak shouldParse  (" ***\n")
+    thematicBreak shouldParse  ("  ***\n")
+    thematicBreak shouldParse  ("   ***\n")
+  }
+  describe ("Four spaces is too many:") {
+    thematicBreak shouldNotParse  ("    ***\n")
+  }
+  describe ("More than three characters may be used:") {
+    thematicBreak shouldParse  ("_____________________________________\n")
+  }
+  describe ("Spaces are allowed between the characters:") {
+    thematicBreak shouldParse  (" - - -\n")
+    thematicBreak shouldParse  (" **  * ** * ** * **\n")
+    thematicBreak shouldParse  ("-     -      -      -\n")
+  }
+  describe ("Spaces are allowed at the end:") {
+    thematicBreak shouldParse  ("- - - -    \n")
+  }
+  describe ("However, no other characters may occur in the line:") {
+    thematicBreak shouldNotParse  ("_ _ _ _ a\n")
+    thematicBreak shouldNotParse  ("a------\n")
+    thematicBreak shouldNotParse  ("---a---\n")
+  }
+  describe ("It is required that all of the non-whitespace characters be the same. So, this is not a thematic break:") {
+    thematicBreak shouldNotParse  (" *-*\n")
+  }
 
   // ###########################################################################
   // ####################### Block Detection Tests #############################
@@ -234,6 +375,24 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
       indentedCodeBlock shouldParseWith  (
         "Foo\n    bar\n",
         "Foo\nbar".toList
+      )
+    }
+    describe ("Thematic breaks can interrupt a paragraph:") {
+      indentedCodeBlock shouldParseWith  (
+        "Foo\n***\nbar\n",
+        "<p>Foo</p>\n<hr />\n<p>bar</p>".toList
+      )
+    }
+    describe ("When both a thematic break and a list item are possible interpretations of a line, the thematic break takes precedence:") {
+      indentedCodeBlock shouldParseWith  (
+        "* Foo\n* * *bar\n* Bar\n",
+        "<ul>\n<li>Foo</li>\n</ul>\n<hr />\n<ul>\n<li>bar</li>\n</ul>\n".toList
+      )
+    }
+    describe ("If you want a thematic break in a list item, use a different bullet:") {
+      indentedCodeBlock shouldParseWith  (
+        "- Foo\n- * * *bar\n",
+        "<ul>\n<li>Foo</li>\n<li>\n<hr />\n</li>\n</ul>\n".toList
       )
     }
   }
