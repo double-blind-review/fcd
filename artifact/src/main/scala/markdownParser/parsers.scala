@@ -58,13 +58,47 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
     (codeBlockLine ~ many(biasedAlt(emptyLine, codeBlockLine))) ^^ {
       case (first: List[Char], rest: List[List[Char]]) => first ++ rest.flatten
     }
+  // ###########################################################################
+  // ####################### Fenced Code Block  ################################
+  // ###########################################################################
+  lazy val fencedCodeBlock =
+    openingFence >> {
+      case (indentation: List[Char], openingFence: List[Char]) =>
+      (many(getCodeBlockLine(indentation.length) <& not(getClosingFence(openingFence.head, openingFence.length))) <~
+      biasedAlt(getClosingFence(openingFence.head, openingFence.length) , succeed(Nil)))
+    } ^^ {
+      case(a: List[List[Char]]) => a.flatten
+    }
+
+  lazy val openingFence: Parser[(List[Char], List[Char])] =
+    repeat(' ', 0, 3) ~ (min('~', 3) | min('`', 3)) <~ many(space) ~ newline
+
+  lazy val openingfence =
+    repeat(' ', 0, 3) ~> (min('~', 3) | min('`', 3)) <~ many(space) ~ newline
+
+  def getCodeBlockLine[T](i: Int): Parser[List[Char]] = {
+    biasedAlt(manyN(i, ' ') ~> many(no('\n')), withoutPrefix(some(space), many(no('\n')))) <~ newline ^^ {
+      case(line: List[Char]) => line ++ List('\n')
+    }
+  }
+
+  def getClosingFence[T](p: Parser[T],i: Int): Parser[List[T]] = {
+    repeat(' ', 0, 3) ~> min (p, i) <~ many(space) ~ newline
+  }
+
+  // returns a Parser wich accept prefix + content but the prefix is stripped
+  def withoutPrefix[T](prefix: Parser[T], content: Parser[T]): Parser[T] = {
+    biasedAlt(prefix ~> (not(prefix ~ many(any)) &> content), content)
+  }
+
+
 
   // Hier könnte ihr Markdown Inline Parser stehen
   lazy val inlineParser =
     many(any)
-    // TODO: Blockparser schreiben
-    lazy val blockParser =
-      many(any)
+  // TODO: Blockparser schreiben
+  lazy val blockParser =
+    many(any)
 }
 
 object MarkdownParsers extends MarkdownParsers with RichParsers with DerivativeParsers with MarkdownHelperfunctions
