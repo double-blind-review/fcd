@@ -132,7 +132,7 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
     many(any)
   // TODO: Blockparser schreiben
   lazy val blockParser =
-    many(any)
+    many(any) ~ newline
 }
 
 object MarkdownParsers extends MarkdownParsers with RichParsers with DerivativeParsers with MarkdownHelperfunctions
