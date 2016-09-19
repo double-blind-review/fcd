@@ -23,10 +23,13 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   // ###########################################################################
   // ######################## ATX Heading Tetsts ###############################
   // ###########################################################################
+  def H1(content: String) =
+    Heading(1, content)
+
   describe ("Simple headings:") {
     atxHeading shouldParseWith (
       "# foo\n",
-      (1, List('f','o','o'))
+      H1("foo")
     )
     atxHeading shouldParseWith (
       "## foo\n",
