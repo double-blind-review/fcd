@@ -37,3 +37,35 @@ Hauptteil:
 
 Conclusion
   - abschluss, kurze zusammenfasssung
+
+
+allgemeine Reihnfolge
+
+Fenced Code Block / Indented Code Block / BlockQuote / Thematic Break / ATX Heading / Settext Heading / Paragraph
+
+wird gebrochen von:
+Thematic Breaks
+  - Nichts
+ATX headings
+  - Nichts
+SettextHeadings
+  - Nichts
+Indeted Code Block
+  - Nichts
+Fenced Code Block
+  - Nichts außer closing fence
+Paragraph
+  - SettextHeading
+  - ATX Heading
+  - Thematic Breaks
+  - NOT INDETED CODE BLOCK
+  - fenced Code Block
+  - Blank Line
+  - Block Quote
+  - List Items
+  - Lists
+
+Block Quotes
+  - Wenn nicht Lazy Continuation dann durch nichts
+List Items
+Lists
