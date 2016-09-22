@@ -24,7 +24,17 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   // ######################## ATX Heading Tetsts ###############################
   // ###########################################################################
   def H1(content: String) =
-    Heading(1, content)
+    Heading(1, content.toList)
+  def H2(content: String) =
+    Heading(2, content.toList)
+  def H3(content: String) =
+    Heading(3, content.toList)
+  def H4(content: String) =
+    Heading(4, content.toList)
+  def H5(content: String) =
+    Heading(5, content.toList)
+  def H6(content: String) =
+    Heading(6, content.toList)
 
   describe ("Simple headings:") {
     atxHeading shouldParseWith (
@@ -33,23 +43,23 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
     )
     atxHeading shouldParseWith (
       "## foo\n",
-      (2, List('f','o','o'))
+      H2("foo")
     )
     atxHeading shouldParseWith (
       "### foo\n",
-      (3, List('f','o','o'))
+      H3("foo")
     )
     atxHeading shouldParseWith (
       "#### foo\n",
-      (4, List('f','o','o'))
+      H4("foo")
     )
     atxHeading shouldParseWith (
       "##### foo\n",
-      (5, List('f','o','o'))
+      H5("foo")
     )
     atxHeading shouldParseWith (
       "###### foo\n",
-      (6, List('f','o','o'))
+      H6("foo")
     )
   }
   describe ("More than six # characters is not a heading:") {
@@ -65,27 +75,27 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   describe ("Contents are parsed as inlines:") {
     atxHeading shouldParseWith (
       "# foo *bar* \\*baz\\*\n",
-      (1, List('f','o','o', ' ', '*', 'b', 'a', 'r','*', ' ' , '\\', '*', 'b', 'a', 'z','\\', '*' ))
+      H1("foo *bar* \\*baz\\*")
     )
   }
   describe ("Leading and trailing blanks are ignored in parsing inline content:") {
     atxHeading shouldParseWith (
       "#                  foo                     \n",
-      (1, List('f','o','o'))
+      H1("foo")
     )
   }
   describe ("One to three spaces indentation are allowed:") {
     atxHeading shouldParseWith (
       " ### foo\n",
-      (3, List('f','o','o'))
+      H3("foo")
     )
     atxHeading shouldParseWith (
       "  ## foo\n",
-      (2, List('f','o','o'))
+      H2("foo")
     )
     atxHeading shouldParseWith (
       "   # foo\n",
-      (1, List('f','o','o'))
+      H1("foo")
     )
   }
   describe ("Four spaces are too much:") {
@@ -94,27 +104,27 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   describe ("A closing sequence of # characters is optional:") {
     atxHeading shouldParseWith (
       "## foo ##\n",
-      (2, List('f','o','o'))
+      H2("foo")
     )
     atxHeading shouldParseWith (
       "  ###   bar    ###\n",
-      (3, List('b','a','r'))
+      H3("bar")
     )
   }
   describe ("It need not be the same length as the opening sequence:") {
     atxHeading shouldParseWith (
       "# foo ##################################\n",
-      (1, List('f','o','o'))
+      H1("foo")
     )
     atxHeading shouldParseWith (
       "##### foo ##\n",
-      (5, List('f','o','o'))
+      H5("foo")
     )
   }
   describe ("Spaces are allowed after the closing sequence:") {
     atxHeading shouldParseWith (
       "### foo ###     \n",
-      (3, List('f','o','o'))
+      H3("foo")
     )
   }
   // Abweichend von der CommonMarkSpec:
@@ -127,11 +137,11 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   describe ("ATX headings can be empty:") {
     atxHeading shouldParseWith (
       "## \n",
-      (2, List())
+      H2("")
     )
     atxHeading shouldParseWith (
       "# \n",
-      (1, List())
+      H1("")
     )
   }
   // ###########################################################################
@@ -140,37 +150,37 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   describe ("a simple Code Block parser") {
     indentedCodeBlock shouldParseWith  (
       "    a simple\n      indented code block\n",
-      "a simple\n  indented code block\n".toList
+      CodeBlock("a simple\n  indented code block\n")
     )
   }
   describe ("The contents of a code block are literal text, and do not get parsed as Markdown:") {
     indentedCodeBlock shouldParseWith  (
       "    <a/>\n    *hi*\n\n    - one \n",
-      "<a/>\n*hi*\n\n- one \n".toList
+      CodeBlock("<a/>\n*hi*\n\n- one \n")
     )
   }
   describe ("Here we have three chunks separated by blank lines:") {
     indentedCodeBlock shouldParseWith  (
       "    chunk1\n\n    chunk2\n  \n \n \n    chunk3 \n",
-      "chunk1\n\nchunk2\n\n\n\nchunk3 \n".toList
+      CodeBlock("chunk1\n\nchunk2\n\n\n\nchunk3 \n")
     )
   }
   describe ("Any initial spaces beyond four will be included in the content, even in interior blank lines:") {
     indentedCodeBlock shouldParseWith  (
       "    chunk1\n      \n      chunk2\n",
-      "chunk1\n  \n  chunk2\n".toList
+      CodeBlock("chunk1\n  \n  chunk2\n")
     )
   }
   describe ("Trailing spaces are included in the code block’s content:") {
     indentedCodeBlock shouldParseWith  (
       "    foo  \n",
-      "foo  \n".toList
+      CodeBlock("foo  \n")
     )
   }
   describe ("The first line can be indented more than four spaces:") {
     indentedCodeBlock shouldParseWith  (
       "        foo\n    bar\n",
-      "    foo\nbar\n".toList
+      CodeBlock("    foo\nbar\n")
     )
   }
   // ###########################################################################
@@ -179,63 +189,63 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   describe ("Here is a simple example with backticks:") {
     fencedCodeBlock shouldParseWith  (
       "```\n<\n >\n```\n",
-      "<\n >\n".toList
+      CodeBlock("<\n >\n")
     )
   }
   describe ("Here is a simple example with tildes:") {
     fencedCodeBlock shouldParseWith  (
       "~~~\n<\n >\n~~~\n",
-      "<\n >\n".toList
+        CodeBlock("<\n >\n")
     )
   }
   describe ("The closing code fence must use the same character as the opening fence:") {
     fencedCodeBlock shouldParseWith  (
       "```\naaa\n~~~\n```\n",
-      "aaa\n~~~\n".toList
+        CodeBlock("aaa\n~~~\n")
     )
     fencedCodeBlock shouldParseWith  (
       "~~~\naaa\n```\n~~~\n",
-      "aaa\n```\n".toList
+      CodeBlock("aaa\n```\n")
     )
   }
   describe ("The closing code fence must be at least as long as the opening fence:") {
     fencedCodeBlock shouldParseWith  (
       "````\naaa\n```\n``````\n",
-      "aaa\n```\n".toList
+      CodeBlock("aaa\n```\n")
     )
     fencedCodeBlock shouldParseWith  (
       "~~~~\naaa\n~~~\n~~~~\n",
-      "aaa\n~~~\n".toList
+      CodeBlock("aaa\n~~~\n")
     )
   }
   describe ("Unclosed code blocks are closed by the end of the document:") {
     fencedCodeBlock shouldParseWith  (
-      "```\n",
-      "".toList
+      "```\n" + 0.toChar,
+      CodeBlock("")
     )
     fencedCodeBlock shouldParseWith  (
-      "`````\n\n```\naaa\n",
-      "\n```\naaa\n".toList
+      "`````\n\n```\naaa\n" + 0.toChar,
+      CodeBlock("\n```\naaa\n")
     )
   }
   describe ("A code block can have all empty lines as its content:") {
     fencedCodeBlock shouldParseWith  (
       "```\n\n  \n```\n",
-      "\n  \n".toList
+      CodeBlock("\n  \n")
     )
   }
   describe ("Fences can be indented. If the opening fence is indented, content lines will have equivalent opening indentation removed, if present:") {
     fencedCodeBlock shouldParseWith  (
       " ```\n aaa\naaa\n```\n",
-      "aaa\naaa\n".toList
+      CodeBlock("aaa\naaa\n")
     )
     fencedCodeBlock shouldParseWith  (
       "  ```\naaa\n  aaa\naaa\n  ```\n",
-      "aaa\naaa\naaa\n".toList
+      CodeBlock("aaa\naaa\naaa\n")
     )
     fencedCodeBlock shouldParseWith  (
       "   ```\n   aaa\n    aaa\n  aaa\n   ```\n",
-      "aaa\n aaa\naaa\n".toList
+      CodeBlock("aaa\n aaa\naaa\n")
     )
   }
   describe ("Four spaces indentation produces an indented code block:") {
@@ -246,17 +256,17 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   describe ("Closing fences may be indented by 0-3 spaces, and their indentation need not match that of the opening fence:") {
     fencedCodeBlock shouldParseWith  (
       "```\naaa\n  ```\n",
-      "aaa\n".toList
+      CodeBlock("aaa\n")
     )
     fencedCodeBlock shouldParseWith  (
       "   ```\naaa\n  ```\n",
-      "aaa\n".toList
+      CodeBlock("aaa\n")
     )
   }
   describe ("This is not a closing fence, because it is indented 4 spaces:") {
     fencedCodeBlock shouldParseWith  (
-      "```\naaa\n    ```\n",
-      "aaa\n    ```\n".toList
+      "```\naaa\n    ```\n" + 0.toChar,
+      CodeBlock("aaa\n    ```\n")
     )
   }
   describe ("Code fences (opening and closing) cannot contain internal spaces:") {
@@ -264,8 +274,8 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
       "``` ```\naaa\n"
     )
     fencedCodeBlock shouldParseWith  (
-      "~~~~~~\naaa\n~~~ ~~\n",
-      "aaa\n~~~ ~~\n".toList
+      "~~~~~~\naaa\n~~~ ~~\n" + 0.toChar,
+      CodeBlock("aaa\n~~~ ~~\n")
     )
   }
 
@@ -322,41 +332,41 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   describe ("Simple examples:") {
     setextHeading shouldParseWith  (
       "Foo *bar*\n=========\n",
-      (1, "Foo *bar*\n".toList)
+      H1("Foo *bar*\n")
     )
     setextHeading shouldParseWith  (
       "Foo *bar*\n---------\n",
-      (2 ,"Foo *bar*\n".toList)
+      H2("Foo *bar*\n")
     )
   }
   describe ("Simple examples:") {
     setextHeading shouldParseWith  (
       "Foo *bar\nbaz*\n=========\n",
-      (1, "Foo *bar\nbaz*\n".toList)
+      H1("Foo *bar\nbaz*\n")
     )
   }
   describe ("The underlining can be any length:") {
     setextHeading shouldParseWith  (
       "Foo\n-------------------------\n",
-      (2, "Foo\n".toList)
+      H2("Foo\n")
     )
     setextHeading shouldParseWith  (
       "Foo\n=\n",
-      (1, "Foo\n".toList)
+      H1("Foo\n")
     )
   }
   describe ("The heading content can be indented up to three spaces, and need not line up with the underlining:") {
     setextHeading shouldParseWith  (
       "   Foo\n---\n",
-      (2, "Foo\n".toList)
+      H2("Foo\n")
     )
     setextHeading shouldParseWith  (
       "  Foo\n-----\n",
-      (2, "Foo\n".toList)
+      H2("Foo\n")
     )
     setextHeading shouldParseWith  (
       "  Foo\n  ==\n",
-      (1, "Foo\n".toList)
+      H1("Foo\n")
     )
   }
   describe ("Four spaces indent is too much:") {
@@ -370,7 +380,7 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   describe ("The setext heading underline can be indented up to three spaces, and may have trailing spaces:") {
     setextHeading shouldParseWith  (
       "Foo\n   ----      \n",
-      (2, "Foo\n".toList)
+      H2("Foo\n")
     )
   }
   describe ("Four spaces is too much:") {
@@ -393,7 +403,7 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   describe ("A simple example with two paragraphs:") {
     paragraph shouldParseWith (
       "aaa\n",
-      "aaa\n".toList
+      Paragraph("aaa\n")
     )
   }
   describe ("Paragraphs can contain multiple lines, but no blank lines:") {
@@ -402,26 +412,26 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
     )
     paragraph shouldParseWith (
       "ccc\nddd\n",
-      "ccc\nddd\n".toList
+      Paragraph("ccc\nddd\n")
     )
   }
   describe ("Leading spaces are skipped:") {
     paragraph shouldParseWith (
       "  aaa\n bbb\n",
-      "aaa\nbbb\n".toList
+      Paragraph("aaa\nbbb\n")
     )
   }
   describe ("Lines after the first may be indented any amount, since indented code blocks cannot interrupt paragraphs.") {
     paragraph shouldParseWith (
       "aaa\n             bbb\n                                       ccc\n",
-      "aaa\nbbb\nccc\n".toList
+      Paragraph("aaa\nbbb\nccc\n")
     )
 
   }
   describe ("However, the first line may be indented at most three spaces, or an indented code block will be triggered:") {
     paragraph shouldParseWith (
       "   aaa\nbbb\n",
-      "aaa\nbbb\n".toList
+      Paragraph("aaa\nbbb\n")
     )
     paragraph shouldNotParse (
       "    aaa\nbbb\n"
