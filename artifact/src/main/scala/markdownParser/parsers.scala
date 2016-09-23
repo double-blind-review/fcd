@@ -125,8 +125,10 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
   // ######################## setext Heading ###################################
   // ###########################################################################
   lazy val setextHeading =
-    paragraph ~ setextUnderline ^^ {case (a,b) => new Heading(b,a.toString)}
-
+    many(line <& no(setextUnderline)) ~ setextUnderline ^^ {case (a,b) => new Heading(b,a.toString)}
+/*
+  lazy val line =
+    no(emptyLine) */
   lazy val setextUnderline =
     repeat(' ', 0, 3) ~> min('-', 1) <~ many(space) ~ newline ^^ {case a => 2} |
     repeat(' ', 0, 3) ~> min('=', 1) <~ many(space) ~ newline ^^ {case a => 1}
@@ -184,11 +186,11 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
   lazy val line: Parser[String] =
     many(no('\n')) ~ newline
 
-  def readLine (open: Parser[Block]): Parser[Block] =
+  def readLine (open: Parser[Block]): Parser[List[Block]] =
     done(open) |
     line >> { l =>
-      (breaking(open) <~ md) <<< l  <|
-      ((open <<< l)   <~ md)        <|
+      (breaking(open)) <<< l  <|
+      ((open <<< l)   ~ md)   <|
       md <<< l
     }
 
@@ -197,7 +199,12 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
       case a : Heading => fail
       case a : CodeBlock => fail
       case a : ThematicBreak => fail
-      case a : Paragraph => fencedCodeBlock <| thematicBreak <| blockQuote <| atxHeading <| setextHeading <|  emptyLine
+      case a : Paragraph => fencedCodeBlock ~ md <|
+                            thematicBreak ~ md   <|
+                            blockQuote ~ md      <|
+                            atxHeading ~ md      <|
+                            setextHeading ~ md   <|
+                            emptyLine ~ md
       case a : BlockQuote => fail
       case a : Block => fail
       case a => fail
@@ -211,28 +218,23 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
       childBlocks = childBlocks ++ List(block);
     }
   }
+// continuation parsing style
+  val md: Parser[Markdown] = {
 
-  val md: Parser[Markdown] ={
-    val document = new Markdown();
-
-    many( readLine(fencedCodeBlock)   <|
-          readLine(indentedCodeBlock) <|
-          readLine(thematicBreak)     <|
-          readLine(blockQuote)        <|
-          readLine(atxHeading)        <|
-          readLine(setextHeading)     <|
-          readLine(emptyLine))        ^^ {
-            case a: List[Block] => {
-              a.foreach(document.addChild);
-              document
-            }
-          }
+    readLine(emptyLine)         <|
+    readLine(indentedCodeBlock) <|
+    (
+    readLine(fencedCodeBlock)   |
+    readLine(thematicBreak)     |
+    readLine(blockQuote)        |
+    readLine(atxHeading)        |
+    readLine(setextHeading)     |
+    ) <|
+    readLine(paragraph)
   }
 
 
-  class Block(){
-
-  }
+  trait Block
 }
 
 object MarkdownParsers extends MarkdownParsers with RichParsers with DerivativeParsers with MarkdownHelperfunctions
