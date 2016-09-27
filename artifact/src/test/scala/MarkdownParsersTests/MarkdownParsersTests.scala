@@ -24,17 +24,17 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   // ######################## ATX Heading Tetsts ###############################
   // ###########################################################################
   def H1(content: String) =
-    Heading(1, content.toList)
+    Heading(1, content)
   def H2(content: String) =
-    Heading(2, content.toList)
+    Heading(2, content)
   def H3(content: String) =
-    Heading(3, content.toList)
+    Heading(3, content)
   def H4(content: String) =
-    Heading(4, content.toList)
+    Heading(4, content)
   def H5(content: String) =
-    Heading(5, content.toList)
+    Heading(5, content)
   def H6(content: String) =
-    Heading(6, content.toList)
+    Heading(6, content)
 
   describe ("Simple headings:") {
     atxHeading shouldParseWith (
