@@ -8,8 +8,12 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
   case class Heading (o: Int, a: String)        extends Block
   case class CodeBlock (a: String)              extends Block
   case class ThematicBreak()                    extends Block
-  case class Paragraph (content: String)        extends Block
-  case class BlockQuote (content: String)  extends Block
+  case class BlockQuote (content: String)       extends Block
+  case class Paragraph (content: String)        extends Block {
+    def toStr(): String = {
+      content
+    }
+  }
 
   val eosChar = 0.toChar
 
@@ -17,7 +21,7 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
   lazy val inlineParser =
     many(any)
   lazy val blockParser =
-    many(any)
+    some(any)
 
 
   lazy val line: Parser[String] =
@@ -50,7 +54,7 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
     many('#') ~ some(space) ~> newline) | newline
 
   lazy val atxHeadingContent: Parser[String] =
-    not(some(space) ~ many(any)) &> (many(no('#')) &> inlineParser) <&
+    not(some(space) ~ many(any)) &> (many(no('#')& no('\n')) &> inlineParser) <&
     not(many(any) ~ some(space))
 
   // ###########################################################################
@@ -171,38 +175,30 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
     }
     // line &> delegate(p)
   }
+  // ###########################################################################
+  // ########################### MD Parser #####################################
+  // ###########################################################################
 
   def readLine (open: Parser[Block]): Parser[List[Block]] =
-    done(open) ^^ {
-      a => List(a)
-    } |
-    line >> { case l: String =>
-      biasedAlt(biasedAlt((breaking(open) <<< l),
-      ((open <<< l) ~ md) ^^ {
-        case (a, b) => a :: b
-      }),
-      md <<< l)
+    done(open) ^^ {a => List(a)} |
+    line >> {l =>
+      (breaking(open) <<< l                           <|
+      ((open <<< l) ~ md ^^ {case(a, b) => a :: b}))  <|
+      md <<< l
     }
 
   def breaking (p: Parser[Block]): Parser[List[Block]] =
     p >> {
       case a : Paragraph => (
-        (emptyLine ~ md)        <|
-        (fencedCodeBlock ~ md)  <|
-        ((
-        thematicBreak          |
-        blockQuote             |
-        atxHeading) ~ md)      <|
-        (setextHeading ~ md)
-        ) ^^ {
-          case(a: Block, b: List[Block]) => a :: b
-        }
+        ((emptyLine ~ md                                 <|
+        fencedCodeBlock ~ md)                            <|
+        (thematicBreak | blockQuote | atxHeading) ~ md)  <|
+        setextHeading ~ md ) ^^ {case(a, b) => a :: b}
       case a => fail
-
     }
 
 // continuation parsing style
-  lazy val md: Parser[List[Block]] = {
+lazy val md: NT[List[Block]] =
     readLine(emptyLine)         <|
     readLine(indentedCodeBlock) <|
     (
@@ -210,10 +206,43 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
     readLine(thematicBreak)     |
     readLine(blockQuote)        |
     readLine(atxHeading)
-    ) <|
+    )                           <|
     readLine(setextHeading)     <|
-    readLine(paragraph)
-  }
+    readLine(paragraph)         |
+    eos ^^^ (List())
+
+
+  def altBreaking (p: Parser[Block]): Parser[Block] =
+    p >> {
+      case a: Paragraph  => atxHeading  <| setextHeading
+      case a => fail
+    }
+/*
+  def altReadLine (open: Parser[Block]): Parser[List[Block]] =
+    done(open) ^^ {a => List(a)}                       |
+    line >> {l =>
+      ((altBreaking(open) <<< l ^^ {a => List(a)})     <|
+      (open <<< l ^^ {a => List(a)}))                  <|
+      (testMd <<< l)
+    }*/
+
+  def altReadLine (open: Parser[Block]): Parser[List[Block]] =
+    done(open) ^^ {a => List(a)}                       |
+    line >> {l =>
+      ((not(altBreaking(open)<<< l) &> open <<< l ^^ {a => List(a)}) |
+      (altBreaking(open) <<< l)^^ {a => List(a)})   <|
+      (testMd <<< l)
+    }
+
+  lazy val testMd: NT[List[Block]] =
+    altBiasedAlt(altReadLine(atxHeading) , altReadLine(paragraph))
+
+  lazy val testParser = many(any)
+
+  def altBiasedAlt[T](p: Parser[T], q: Parser[T]): Parser[T] =
+    testParser >> { l =>
+      (p <<< l | (not((p <<< l) ~ testParser) &> q <<< l))
+    }
 }
 
 object MarkdownParsers extends MarkdownParsers with RichParsers with DerivativeParsers

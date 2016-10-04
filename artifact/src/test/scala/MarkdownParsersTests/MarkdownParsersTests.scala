@@ -144,6 +144,9 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
       H1("")
     )
   }
+  describe("ATX headings should not go over 2 or more lines"){
+    atxHeading shouldNotParse ("# heading \ntest \n")
+  }
   // ###########################################################################
   // #################### Indented Code Block Tests ############################
   // ###########################################################################
@@ -440,6 +443,7 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   // ###########################################################################
   // ####################### Block Detection Tests #############################
   // ###########################################################################
+
 /*
   describe ("ATX headings can be empty:") {
     blockParser shouldParseWith  (
