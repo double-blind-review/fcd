@@ -121,7 +121,7 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
       )
 
     def thematicBreakLine(c: Char): Parser[Any] = {
-          repeat(' ', 0, 3) ~> (stripSpaces(min(c, 3)) <& not(space ~ always))  <~ newline
+      repeat(' ', 0, 3) ~> (stripSpaces(min(c, 3)) <& not(space ~ always))  <~ newline
     }
 
     (thematicBreakLine('*')|
@@ -199,43 +199,26 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
 
 // continuation parsing style
 lazy val md: NT[List[Block]] =
-    readLine(emptyLine)         <|
-    readLine(indentedCodeBlock) <|
-    (
-    readLine(fencedCodeBlock)   |
-    readLine(thematicBreak)     |
-    readLine(blockQuote)        |
-    readLine(atxHeading)
-    )                           <|
-    readLine(setextHeading)     <|
-    readLine(paragraph)         |
+    altBiasedAlt(readLine(atxHeading), readLine(paragraph))
     eos ^^^ (List())
 
 
   def altBreaking (p: Parser[Block]): Parser[Block] =
     p >> {
-      case a: Paragraph  => atxHeading  <| setextHeading
+      case a: Paragraph  => atxHeading <| thematicBreak
       case a => fail
     }
-/*
-  def altReadLine (open: Parser[Block]): Parser[List[Block]] =
-    done(open) ^^ {a => List(a)}                       |
-    line >> {l =>
-      ((altBreaking(open) <<< l ^^ {a => List(a)})     <|
-      (open <<< l ^^ {a => List(a)}))                  <|
-      (testMd <<< l)
-    }*/
 
   def altReadLine (open: Parser[Block]): Parser[List[Block]] =
     done(open) ^^ {a => List(a)}                       |
     line >> {l =>
-      ((not(altBreaking(open)<<< l) &> open <<< l ^^ {a => List(a)}) |
-      (altBreaking(open) <<< l)^^ {a => List(a)})   <|
+      altBiasedAlt(((altBreaking(open) <<< l) ~ testMd ^^ {case(a, b) => a :: b}) ,
+      ((open <<< l) ~ (not(open <<< l) &> testMd) ^^ {case(a, b) => a :: b}))   <|
       (testMd <<< l)
     }
 
   lazy val testMd: NT[List[Block]] =
-    altBiasedAlt(altReadLine(atxHeading) , altReadLine(paragraph))
+    altBiasedAlt(altReadLine(atxHeading) , altReadLine(paragraph)) | eosChar ^^^ (List())
 
   lazy val testParser = many(any)
 
