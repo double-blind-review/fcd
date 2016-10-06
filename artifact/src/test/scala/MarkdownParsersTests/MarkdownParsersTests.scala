@@ -9,6 +9,9 @@ import language.implicitConversions
 
 class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
 
+  val blockQuoteTests = false;
+  val documentParser = false;
+
   def _parsers: MarkdownParsers.type = MarkdownParsers
   override lazy val parsers = _parsers
 
@@ -98,8 +101,13 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
       H1("foo")
     )
   }
-  describe ("Four spaces are too much:") {
-    atxHeading shouldNotParse ("    # foo\n")
+  if(documentParser){
+    describe ("Four spaces are too much:") {
+      mdIndetedAtx shouldParseWith(
+        "    # foo\n\u0000",
+        List(CodeBlock("# foo\n"))
+      )
+    }
   }
   describe ("A closing sequence of # characters is optional:") {
     atxHeading shouldParseWith (
@@ -251,11 +259,15 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
       CodeBlock("aaa\n aaa\naaa\n")
     )
   }
-  describe ("Four spaces indentation produces an indented code block:") {
-    fencedCodeBlock shouldNotParse  (
-      "    ```\n    aaaa\n    ```\n"
-    )
+  if(documentParser){
+    describe ("Four spaces indentation produces an indented code block:") {
+      mdIndetedFenced shouldParseWith  (
+        "    ```\n    aaaa\n    ```\n\u0000",
+        List(CodeBlock("```\naaa\n```\n"))
+      )
+    }
   }
+
   describe ("Closing fences may be indented by 0-3 spaces, and their indentation need not match that of the opening fence:") {
     fencedCodeBlock shouldParseWith  (
       "```\naaa\n  ```\n",
@@ -306,9 +318,15 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
     thematicBreak shouldParse  ("  ***\n")
     thematicBreak shouldParse  ("   ***\n")
   }
-  describe ("Four spaces is too many:") {
-    thematicBreak shouldNotParse  ("    ***\n")
+  if(documentParser){
+    describe ("Four spaces is too many:") {
+      mdIndetedThematic shouldParseWith  (
+        "    ***\n\u0000",
+        List(ThematicBreak())
+      )
+    }
   }
+
   describe ("More than three characters may be used:") {
     thematicBreak shouldParse  ("_____________________________________\n")
   }
@@ -373,9 +391,12 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
     )
   }
   describe ("Four spaces indent is too much:") {
-    setextHeading shouldNotParse  (
-      "    Foo\n    ---\n"
-    )
+    if(documentParser){
+      mdIndetedSetext shouldParseWith  (
+        "    Foo\n    ---\n\u0000",
+        List(CodeBlock("Foo\n---\n"))
+      )
+    }
     setextHeading shouldNotParse  (
       "    Foo\n----\n"
     )
@@ -443,86 +464,78 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   // ###########################################################################
   // ####################### Block Detection Tests #############################
   // ###########################################################################
-
-/*
-  describe ("ATX headings can be empty:") {
-    blockParser shouldParseWith  (
-      """|Foo bar
-         |# baz
-         |Bar foo
-         |""".stripMargin('|'),
-      """|<p>Foo bar</p>
-         |<h1>baz</h1>
-         |<p>Bar foo</p>""".stripMargin('|').toList
-    )
-    blockParser shouldParseWith (
-      """|****
-         |## foo
-         |****
-         |""".stripMargin('|'),
-      """|<hr />
-         |<h2>foo</h2>
-         |<hr />""".stripMargin('|').toList
-    )
-  }
-  describe ("Four spaces are too much:") {
-    blockParser shouldParseWith  (
-      """|foo
-         |    # bar
-         |""".stripMargin('|'),
-      """|<p>foo
-         |# bar</p>""".stripMargin('|').toList
-    )
-  }
-  describe ("f there is any ambiguity between an interpretation of indentation as a code block and as indicating that material belongs to a list item, the list item interpretation takes precedence:") {
-    blockParser shouldParseWith  (
-      """|  - foo
-         |
-         |    bar""".stripMargin('|'),
-      """|<ul>
-         |<li>
-         |<p>foo</p>
-         |<p>bar</p>
-         |</li>
-         |</ul>""".stripMargin('|').toList
-    )
-    blockParser shouldParseWith  (
-      """|1.  foo
-         |
-         |    - bar""".stripMargin('|'),
-      """|<ol>
-         |<li>
-         |<p>foo</p>
-         |<ul>
-         |<li>bar</li>
-         |</ul>
-         |</li>
-         |</ul>""".stripMargin('|').toList
-    )
-    describe ("An indented code block cannot interrupt a paragraph. ") {
-      indentedCodeBlock shouldParseWith  (
-        "Foo\n    bar\n",
-        "Foo\nbar".toList
+  if(blockQuoteTests){
+    describe("the parser should parse a heading or a paragraph") {
+      mdAtxParagraph shouldParseWith(
+        "paragraph\n\u0000",
+        List(Paragraph("paragraph\n"))
+      )
+      mdAtxParagraph shouldParseWith(
+        "# heading\n\u0000",
+        List(Heading(1, "heading"))
       )
     }
-    describe ("Thematic breaks can interrupt a paragraph:") {
-      indentedCodeBlock shouldParseWith  (
-        "Foo\n***\nbar\n",
-        "<p>Foo</p>\n<hr />\n<p>bar</p>".toList
+    describe("the parser shoud greedy read a paragraph") {
+      mdAtxParagraph shouldParseWith(
+        "paragraph\ntest\n\u0000",
+        List(Paragraph("paragraph\ntest\n"))
+      )
+      mdAtxParagraph shouldParseWith(
+        "paragraph\nasdf\n# heading\n\u0000",
+        List(Paragraph("paragraph\nasdf\n"), Heading(1,"heading"))
       )
     }
-    describe ("When both a thematic break and a list item are possible interpretations of a line, the thematic break takes precedence:") {
-      indentedCodeBlock shouldParseWith  (
-        "* Foo\n* * *bar\n* Bar\n",
-        "<ul>\n<li>Foo</li>\n</ul>\n<hr />\n<ul>\n<li>bar</li>\n</ul>\n".toList
+    describe("the parser shoud read a atxHeading bevor a paragraph") {
+      mdAtxParagraph shouldParseWith(
+        "# heading\nparagraph\n\u0000",
+        List(Heading(1, "heading"),Paragraph("paragraph\n"))
       )
     }
-    describe ("If you want a thematic break in a list item, use a different bullet:") {
-      indentedCodeBlock shouldParseWith  (
-        "- Foo\n- * * *bar\n",
-        "<ul>\n<li>Foo</li>\n<li>\n<hr />\n</li>\n</ul>\n".toList
+    describe("the parser shoud get broaken by an ATX heading") {
+      mdAtxParagraph shouldParseWith(
+        "paragraph\n# heading\n\u0000",
+        List(Paragraph("paragraph\n"),Heading(1, "heading"))
+      )
+    }
+    describe("a paragraph should can be surrounded by empty lines") {
+      mdEmptyParagraph shouldParseWith(
+        "paragraph\n\n\u0000",
+        List(Paragraph("paragraph\n"), EmptyLine())
+      )
+      mdEmptyParagraph shouldParseWith(
+        "\nparagraph\n\u0000",
+        List(EmptyLine(), Paragraph("paragraph\n"))
+      )
+    }
+    describe("a paragraph can be inside of a blockQuote") {
+      mdBlockParagraph shouldParseWith(
+        "> paragraph\n\u0000",
+        List(BlockQuote(List(Paragraph("paragraph\n"))))
+      )
+    }
+    describe("a blockQuote can be inside of a blockQuote") {
+      mdBlockParagraph shouldParseWith(
+        "> > paragraph\n\u0000",
+        List(BlockQuote(List(BlockQuote(List(Paragraph("paragraph\n"))))))
+      )
+    }/*
+    describe("a blockQuote can be multiline") {
+      mdBlockParagraph shouldParseWith(
+        "> paragraph\n> paragraph\n\u0000",
+        List(BlockQuote(List(Paragraph("paragraph\nparagraph\n"))))
+      )
+    }*/
+    describe("a setextHeading is not a paragraph") {
+      mdSetextParagraph shouldParseWith(
+        "setextheading\n---\n\u0000",
+        List(Heading(2,"setextheading\n"))
+      )
+    }
+    describe("a setextHeading is not a paragraph but can followed by a paragraph") {
+      mdSetextParagraph shouldParseWith(
+        "setextheading\n---\nparagraph\n\u0000",
+        List(Heading(2,"setextheading\n"), Paragraph("paragraph\n"))
       )
     }
   }
-*/
 }

@@ -19,4 +19,12 @@ trait MarkdownHelperfunctions{ self: RichParsers =>
 
   def repeat[T](p: Parser[T], i: Int , j: Int): Parser[List[T]] =
     min(p, i) &> max(p, j)
+
+
+  lazy val always2 = many(any)
+
+  def altBiasedAlt[T](p: Parser[T], q: Parser[T]): Parser[T] =
+    always2 >> { l =>
+      (p <<< l | (not((p <<< l) ~ always2) &> q <<< l))
+    }
 }
