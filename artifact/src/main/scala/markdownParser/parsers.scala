@@ -15,10 +15,12 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
     def toStr(): String = { content }
   }
 
-  val eosChar = 0.toChar
-  lazy val intendation = repeat(space, 0, 3)
+  lazy val indet = repeat(space, 0, 3)
   // Hier könnte ihr Markdown Inline Parser stehen
   lazy val inlineParser = many(any)
+  // parser that pareses the end of stream char
+  val eosChar = 0.toChar
+  lazy val eos: Parser[Char] = eosChar
 
   // ###########################################################################
   // ############################ emptyLine  ###################################
@@ -32,7 +34,7 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
 
   lazy val atxHeading : Parser[Block] =
     openingSeq ~ atxHeadingContent <~ closingSeq ^^ {
-      case(a, b) => new Heading(a.length, b)
+      case (a, b) => new Heading(a.length, b)
     }
 
   lazy val openingSeq: Parser[String] =
@@ -74,8 +76,6 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
   // ####################### Fenced Code Block  ################################
   // ###########################################################################
 
-  lazy val eos: Parser[Char] = 0.toChar
-
   lazy val fencedCodeBlock: Parser[Block] ={
 
     def getCodeBlockLine[T](i: Int): Parser[String] =
@@ -85,7 +85,7 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
 
 
     def getClosingFence[T](p: Parser[T],i: Int): Parser[List[T]] =
-      ( (intendation ~> min (p, i) <~ many(space) ~ newline)
+      ( (indet ~> min (p, i) <~ many(space) ~ newline)
       | eos ^^^ List()
       )
 
@@ -128,14 +128,14 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
   // ###########################################################################
 
   lazy val setextHeading: Parser[Block] =
-    many(intendation ~> settextContent  <&
+    many(indet ~> settextContent  <&
     not(setextUnderline)) ~ setextUnderline ^^ {
       case (a, b) => new Heading(b, a mkString)
     }
 
   lazy val setextUnderline: Parser[Int] =
-    ( intendation ~> min('-', 1) <~ many(space) ~ newline ^^ {case a => 2}
-    | intendation ~> min('=', 1) <~ many(space) ~ newline ^^ {case a => 1}
+    ( indet ~> min('-', 1) <~ many(space) ~ newline ^^^ (2)
+    | indet ~> min('=', 1) <~ many(space) ~ newline ^^^ (1)
     )
 
   lazy val settextContent: Parser[String] =
@@ -146,7 +146,7 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
   // ###########################################################################
 
   lazy val paragraph: Parser[Block] =
-    (intendation ~> paragraphContent ~
+    (indet ~> paragraphContent ~
     many(many(space) ~> paragraphContent)) ^^ {
       case (a, b) => new Paragraph(a + (b mkString))
     }
@@ -184,8 +184,8 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
   def readLine (open: Parser[Block]): Parser[List[Block]] =
     done(open) ^^ {a => List(a)} |
     line >> {l =>
-      altBiasedAlt(((altBreaking(open) <<< l) ~ md ^^ {case(a, b) => a ++ b}),
-      ((open <<< l) ~ (not(open <<< l) &> md) ^^ {case(a, b) => a :: b}))     <|
+      altBiasedAlt(((altBreaking(open) <<< l) ~ md ^^ {case (a, b) => a ++ b}),
+      ((open <<< l) ~ (not(open <<< l) &> md) ^^ {case (a, b) => a :: b}))    <|
       (md <<< l)
     }
 
@@ -216,61 +216,63 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
     p >> {
       case a: Paragraph => (p <<< a.toStr) ~
         (emptyLine <| (atxHeading | blockQuote)) ^^ {
-          case(a,b) => List(a, b)
+          case (a, b) => List(a, b)
         }
       case a => fail
     }
 
-  def altReadLine (open: Parser[Block], document: Parser[List[Block]]): Parser[List[Block]] =
+  def altReadLine (open: Parser[Block], doc: Parser[List[Block]]): Parser[List[Block]] =
     done(open) ^^ {a => List(a)} |
     line >> {l =>
-      altBiasedAlt(((altBreaking(open) <<< l) ~ document ^^ {
-        case(a, b) => a ++ b
+      altBiasedAlt(((altBreaking(open) <<< l) ~ doc ^^ {
+        case (a, b) => a ++ b
       }) ,
-      ((open <<< l) ~ (not(open <<< l) &> document) ^^ {
-        case(a, b) => a :: b
+      ((open <<< l) ~ (not(open <<< l) &> doc) ^^ {
+        case (a, b) => a :: b
       })) <|
-      (document <<< l)
+      (doc <<< l)
     }
 
   lazy val mdAtxParagraph: NT[List[Block]] =
     altBiasedAlt(altReadLine(atxHeading, mdAtxParagraph),
                  altReadLine(paragraph, mdAtxParagraph)) |
-                 eosChar ^^^ (List())
+                 eos ^^^ (List())
 
   lazy val mdEmptyParagraph: NT[List[Block]] =
     altBiasedAlt(altReadLine(emptyLine, mdEmptyParagraph),
                  altReadLine(paragraph, mdEmptyParagraph)) |
-                 eosChar ^^^ (List())
+                 eos ^^^ (List())
 
   lazy val mdBlockParagraph: NT[List[Block]] =
-   altBiasedAlt(altReadLine(blockQuote, mdBlockParagraph),
-                altReadLine(paragraph, mdBlockParagraph)) |
-                eosChar ^^^ (List())
+    altBiasedAlt(altReadLine(blockQuote, mdBlockParagraph),
+                 altReadLine(paragraph, mdBlockParagraph)) |
+                 eos ^^^ (List())
+
   lazy val mdSetextParagraph: NT[List[Block]] =
     altBiasedAlt(altReadLine(setextHeading, mdSetextParagraph),
                  altReadLine(paragraph, mdSetextParagraph)) |
-                 eosChar ^^^ (List())
+                 eos ^^^ (List())
+
   lazy val mdIndentedAtx: NT[List[Block]] =
     altBiasedAlt(altReadLine(indentedCodeBlock, mdIndentedAtx),
                  altReadLine(atxHeading, mdIndentedAtx)) |
-                 eosChar ^^^ (List())
+                 eos ^^^ (List())
 
   lazy val mdIndentedFenced: NT[List[Block]] =
     altBiasedAlt(altReadLine(indentedCodeBlock, mdIndentedFenced),
                  altReadLine(fencedCodeBlock, mdIndentedFenced)) |
-                 eosChar ^^^ (List())
+                 eos ^^^ (List())
 
   lazy val mdIndentedThematic: NT[List[Block]] =
     altBiasedAlt(altReadLine(indentedCodeBlock, mdIndentedThematic),
                  altReadLine(thematicBreak, mdIndentedThematic)) |
-                 eosChar ^^^ (List())
+                 eos ^^^ (List())
 
   lazy val mdIndentedSetext: NT[List[Block]] =
     altBiasedAlt(altReadLine(indentedCodeBlock, mdIndentedSetext),
                  altReadLine(setextHeading, mdIndentedSetext)) |
-                 eosChar ^^^ (List())
+                 eos ^^^ (List())
 }
 
-object MarkdownParsers extends MarkdownParsers with RichParsers with DerivativeParsers
-  with MarkdownHelperfunctions
+object MarkdownParsers extends MarkdownParsers with RichParsers
+  with DerivativeParsers with MarkdownHelperfunctions
