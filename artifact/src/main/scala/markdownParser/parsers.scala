@@ -160,7 +160,7 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
 
   lazy val blockQuote: Parser[Block]= {
     def blockQuoteCombinator[T](p: Parser[T]): Parser[T] =
-      ( done(p)
+      ( done(p << eosChar)
       | ('>' ~ space ~> readLine(p))
       <|('>' ~> readLine(p))
       )
@@ -170,9 +170,7 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
       | charParser('\n')  >> {c => blockQuoteCombinator(p << c)}
       )
 
-    blockQuoteCombinator(some(any) >> {c =>
-      mdBlockParagraph <<< c + eosChar
-    }) ^^ {a => new BlockQuote(a)}
+    (line ~ always) &> blockQuoteCombinator(mdBlockParagraph) ^^ {a => new BlockQuote(a)}
   }
   // ###########################################################################
   // ########################### MD Parser #####################################
@@ -184,8 +182,9 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
   def readLine (open: Parser[Block]): Parser[List[Block]] =
     done(open) ^^ {a => List(a)} |
     line >> {l =>
+      val open2 = open <<< l
       altBiasedAlt(((altBreaking(open) <<< l) ~ md ^^ {case (a, b) => a ++ b}),
-      ((open <<< l) ~ (not(open <<< l) &> md) ^^ {case (a, b) => a :: b}))    <|
+      (open2 ~ (not(open2) &> md) ^^ {case (a, b) => a :: b}))    <|
       (md <<< l)
     }
 
@@ -224,7 +223,7 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
   def altReadLine (open: Parser[Block], doc: Parser[List[Block]]): Parser[List[Block]] =
     done(open) ^^ {a => List(a)} |
     line >> {l =>
-      altBiasedAlt(((altBreaking(open) <<< l) ~ doc ^^ {
+      biasedAlt2(((altBreaking(open) <<< l) ~ doc ^^ {
         case (a, b) => a ++ b
       }) ,
       ((open <<< l) ~ (not(open <<< l) &> doc) ^^ {
@@ -234,7 +233,7 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
     }
 
   lazy val mdAtxParagraph: NT[List[Block]] =
-    altBiasedAlt(altReadLine(atxHeading, mdAtxParagraph),
+    biasedAlt2(altReadLine(atxHeading, mdAtxParagraph),
                  altReadLine(paragraph, mdAtxParagraph)) |
                  eos ^^^ (List())
 
