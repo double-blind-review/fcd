@@ -1,6 +1,8 @@
 package fcd
 package markdown
 
+import scala.language.postfixOps
+
 trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
 
   trait Block
@@ -8,28 +10,28 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
   case class Heading (o: Int, a: String)        extends Block
   case class CodeBlock (a: String)              extends Block
   case class ThematicBreak()                    extends Block
-  case class BlockQuote (content: List[Block]) extends Block
+  case class BlockQuote (content: List[Block])  extends Block
   case class Paragraph (content: String)        extends Block {
     def toStr(): String = { content }
   }
 
   val eosChar = 0.toChar
-
+  lazy val intendation = repeat(space, 0, 3)
   // Hier könnte ihr Markdown Inline Parser stehen
-  lazy val inlineParser =
-    many(any)
+  lazy val inlineParser = many(any)
 
   // ###########################################################################
   // ############################ emptyLine  ###################################
   // ###########################################################################
-  lazy val emptyLine: Parser[Block] =
-    many(space) ~> newline ^^^ (EmptyLine())
+
+  lazy val emptyLine: Parser[Block] = many(space) ~> newline ^^^ (EmptyLine())
 
   // ###########################################################################
   // ########################### ATX Heading  ##################################
   // ###########################################################################
+
   lazy val atxHeading : Parser[Block] =
-    openingSeq ~ atxHeadingContent <~ closingSeq  ^^ {
+    openingSeq ~ atxHeadingContent <~ closingSeq ^^ {
       case(o, a) => new Heading(o.length, a)
     }
 
@@ -42,63 +44,55 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
     newline
 
   lazy val atxHeadingContent: Parser[String] =
-    not(some(space) ~ many(any)) &> (many(no('#') & no('\n')) &> inlineParser) <&
+    not(some(space) ~ many(any)) &>
+    (many(no('#') & no('\n')) &> inlineParser) <&
     not(many(any) ~ some(space))
 
   // ###########################################################################
   // ############################ Code Block  #############ää###################
   // ###########################################################################
 
-  // Umschreiben in FCD!
-  // Siehe Paper
   lazy val indentedCodeBlock: Parser[Block] =
     codeBlockLine ~ many(biasedAlt(emptyLineCodeBlock, codeBlockLine)) ^^ {
-      case (a, b) => new CodeBlock(a::b mkString)
+      case (a, b) => new CodeBlock(a :: b mkString)
     }
 
   lazy val codeBlockContent: Parser[String] =
     some(no('\n'))
 
   lazy val codeBlockLine: Parser[String] =
-    manyN(4, ' ') ~> codeBlockContent ~ newline
+    manyN(4, space) ~> codeBlockContent ~ newline
 
   lazy val emptyLineCodeBlock: Parser[String] =
-    biasedAlt(
-    (manyN(4, ' ') ~> many(space) ~ newline),
-    (many(space) ~> newline))
+    biasedAlt((manyN(4, space) ~> many(space) ~ newline),
+              (many(space) ~> newline))
 
   // ###########################################################################
   // ####################### Fenced Code Block  ################################
   // ###########################################################################
 
-  lazy val eos: Parser[Char] = eosChar
+  lazy val eos: Parser[Char] = 0.toChar
 
   lazy val fencedCodeBlock: Parser[Block] ={
 
-    def getCodeBlockLine[T](i: Int): Parser[String] = {
-      biasedAlt(
-      (manyN(i, ' ') ~> many(no('\n'))),
+    def getCodeBlockLine[T](i: Int): Parser[String] =
+      ((manyN(i, space) ~> many(no('\n'))) <|
       (withoutPrefix(some(space), many(no('\n'))))) ~ newline
-    }
 
-    def getClosingFence[T](p: Parser[T],i: Int): Parser[List[T]] = {
-      (many(space) ~> min (p, i) <~ many(space) ~ newline) |
+
+    def getClosingFence[T](p: Parser[T],i: Int): Parser[List[T]] =
+      (intendation ~> min (p, i) <~ many(space) ~ newline) |
       eos ^^^ List()
-    }
 
     // returns a Parser wich accept prefix + content but the prefix is stripped
-    def withoutPrefix[T](prefix: Parser[Any], content: Parser[T]): Parser[T] = {
-      (prefix ~> (not(prefix ~ many(any)) &> content)) <|
-      (content)
-    }
+    def withoutPrefix[T](prefix: Parser[Any], content: Parser[T]): Parser[T] =
+      (prefix ~> (not(prefix ~ many(any)) &> content)) <| (content)
 
     openingFence >> {
-      case (indentation: List[Char], openingFence: List[Char]) =>
+      case (indentation, openingFence) =>
         val closing = getClosingFence(openingFence.head, openingFence.length)
         many(getCodeBlockLine(indentation.length) <& not(closing)) <~ closing
-    } ^^ {
-      case (a: List[String]) => new CodeBlock(a mkString)
-    }
+    } ^^ {a => new CodeBlock(a mkString)}
   }
 
   lazy val openingFence: Parser[(List[Char], List[Char])] =
@@ -107,6 +101,7 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
   // ###########################################################################
   // ######################## Thematic Breaks ##################################
   // ###########################################################################
+
   lazy val thematicBreak: Parser [Block] = {
     def stripSpaces[T](p: Parser[T]): Parser[T] =
       ( no(' ')         >> {c => stripSpaces(p << c)}
@@ -114,26 +109,27 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
       | done(p)
       )
 
-    def thematicBreakLine(c: Char): Parser[Any] = {
-      many(space) ~> (stripSpaces(min(c, 3)) <& not(space ~ always))  <~ newline
-    }
+    def thematicBreakLine(c: Char): Parser[Any] =
+      many(space) ~> (stripSpaces(min(c, 3)) <& not(space ~ always)) <~ newline
 
-    (thematicBreakLine('*') |
-     thematicBreakLine('-') |
-     thematicBreakLine('_')) ^^ { a =>  ThematicBreak()}
+    ( thematicBreakLine('*')
+    | thematicBreakLine('-')
+    | thematicBreakLine('_')
+    ) ^^ { a =>  ThematicBreak()}
   }
 
   // ###########################################################################
   // ######################## setext Heading ###################################
   // ###########################################################################
+
   lazy val setextHeading: Parser[Block] =
-    many(many(space) ~> settextContent  <& not(setextUnderline)) ~ setextUnderline ^^ {
+    many(intendation ~> settextContent  <& not(setextUnderline)) ~ setextUnderline ^^ {
       case (a, b) => new Heading(b, a mkString)
     }
 
   lazy val setextUnderline: Parser[Int] =
-    many(space) ~> min('-', 1) <~ many(space) ~ newline ^^ {case a => 2} |
-    many(space) ~> min('=', 1) <~ many(space) ~ newline ^^ {case a => 1}
+    intendation ~> min('-', 1) <~ many(space) ~ newline ^^ {case a => 2} |
+    intendation ~> min('=', 1) <~ many(space) ~ newline ^^ {case a => 1}
 
   lazy val settextContent: Parser[String] =
     no(' ') ~  many(no('\n')) ~ newline
@@ -141,10 +137,11 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
   // ###########################################################################
   // ########################### Paragraph #####################################
   // ###########################################################################
+
   lazy val paragraph: Parser[Block] =
-    (repeat(' ', 0, 3) ~> paragraphContent ~
+    (intendation ~> paragraphContent ~
     many(many(space) ~> paragraphContent)) ^^ {
-      case (a: String,b: List[String]) => new Paragraph(a + (b mkString))
+      case (a, b) => new Paragraph(a + (b mkString))
     }
 
   lazy val paragraphContent: Parser[String] =
@@ -167,15 +164,12 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
 
     blockQuoteCombinator(some(any) >> {c =>
       mdBlockParagraph <<< c + eosChar
-    }
-    ) ^^ {
-      a => new BlockQuote(a)
-    }
-    // line &> delegate(p)
+    }) ^^ {a => new BlockQuote(a)}
   }
   // ###########################################################################
   // ########################### MD Parser #####################################
   // ###########################################################################
+
   lazy val line: Parser[String] =
     many(no('\n')) ~ newline
 
@@ -193,7 +187,7 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
         ((emptyLine <| fencedCodeBlock) <|
         (thematicBreak | blockQuote | atxHeading)) <|
         setextHeading) ^^ {
-          case(a, b) => List(a,b)
+          case(a, b) => List(a, b)
         }
       case a => fail
     }
@@ -211,7 +205,9 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
 
   def altBreaking (p: Parser[Block]): Parser[List[Block]] =
     p >> {
-      case a: Paragraph => (p <<< a.toStr) ~ (emptyLine <| (atxHeading | blockQuote)) ^^ {case(a,b) => List(a,b)}
+      case a: Paragraph => (p <<< a.toStr) ~ (emptyLine <| (atxHeading | blockQuote)) ^^ {
+                              case(a,b) => List(a,b)
+                           }
       case a => fail
     }
 
@@ -241,25 +237,25 @@ trait MarkdownParsers { self: RichParsers with MarkdownHelperfunctions =>
     altBiasedAlt(altReadLine(setextHeading, mdSetextParagraph),
                  altReadLine(paragraph, mdSetextParagraph)) |
                  eosChar ^^^ (List())
-  lazy val mdIndetedAtx: NT[List[Block]] =
-    altBiasedAlt(altReadLine(indentedCodeBlock, mdIndetedAtx),
-                 altReadLine(atxHeading, mdIndetedAtx)) |
+  lazy val mdIndentedAtx: NT[List[Block]] =
+    altBiasedAlt(altReadLine(indentedCodeBlock, mdIndentedAtx),
+                 altReadLine(atxHeading, mdIndentedAtx)) |
                  eosChar ^^^ (List())
 
-  lazy val mdIndetedFenced: NT[List[Block]] =
-    altBiasedAlt(altReadLine(indentedCodeBlock, mdIndetedFenced),
-                 altReadLine(fencedCodeBlock, mdIndetedFenced)) |
+  lazy val mdIndentedFenced: NT[List[Block]] =
+    altBiasedAlt(altReadLine(indentedCodeBlock, mdIndentedFenced),
+                 altReadLine(fencedCodeBlock, mdIndentedFenced)) |
                  eosChar ^^^ (List())
 
-  lazy val mdIndetedThematic: NT[List[Block]] =
-    altBiasedAlt(altReadLine(indentedCodeBlock, mdIndetedThematic),
-                 altReadLine(thematicBreak, mdIndetedThematic)) |
+  lazy val mdIndentedThematic: NT[List[Block]] =
+    altBiasedAlt(altReadLine(indentedCodeBlock, mdIndentedThematic),
+                 altReadLine(thematicBreak, mdIndentedThematic)) |
                  eosChar ^^^ (List())
 
- lazy val mdIndetedSetext: NT[List[Block]] =
-   altBiasedAlt(altReadLine(indentedCodeBlock, mdIndetedSetext),
-                altReadLine(setextHeading, mdIndetedSetext)) |
-                eosChar ^^^ (List())
+  lazy val mdIndentedSetext: NT[List[Block]] =
+    altBiasedAlt(altReadLine(indentedCodeBlock, mdIndentedSetext),
+                 altReadLine(setextHeading, mdIndentedSetext)) |
+                 eosChar ^^^ (List())
 }
 
 object MarkdownParsers extends MarkdownParsers with RichParsers with DerivativeParsers

@@ -9,8 +9,8 @@ import language.implicitConversions
 
 class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
 
-  val blockQuoteTests = false;
-  val documentParser = false;
+  val blockQuoteTests = true;
+  val documentParser = true;
 
   def _parsers: MarkdownParsers.type = MarkdownParsers
   override lazy val parsers = _parsers
@@ -103,9 +103,9 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   }
   if(documentParser){
     describe ("Four spaces are too much:") {
-      mdIndetedAtx shouldParseWith(
-        "    # foo\n\u0000",
-        List(CodeBlock("# foo\n"))
+      mdIndentedAtx shouldParseWith(
+        "    # f\n\u0000",
+        List(CodeBlock("# f\n"))
       )
     }
   }
@@ -259,15 +259,6 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
       CodeBlock("aaa\n aaa\naaa\n")
     )
   }
-  if(documentParser){
-    describe ("Four spaces indentation produces an indented code block:") {
-      mdIndetedFenced shouldParseWith  (
-        "    ```\n    aaaa\n    ```\n\u0000",
-        List(CodeBlock("```\naaa\n```\n"))
-      )
-    }
-  }
-
   describe ("Closing fences may be indented by 0-3 spaces, and their indentation need not match that of the opening fence:") {
     fencedCodeBlock shouldParseWith  (
       "```\naaa\n  ```\n",
@@ -320,9 +311,9 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   }
   if(documentParser){
     describe ("Four spaces is too many:") {
-      mdIndetedThematic shouldParseWith  (
+      mdIndentedThematic shouldParseWith  (
         "    ***\n\u0000",
-        List(ThematicBreak())
+        List(CodeBlock("***\n"))
       )
     }
   }
@@ -392,9 +383,9 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   }
   describe ("Four spaces indent is too much:") {
     if(documentParser){
-      mdIndetedSetext shouldParseWith  (
-        "    Foo\n    ---\n\u0000",
-        List(CodeBlock("Foo\n---\n"))
+      mdIndentedSetext shouldParseWith  (
+        "    a\n    ---\n\u0000",
+        List(CodeBlock("a\n---\n"))
       )
     }
     setextHeading shouldNotParse  (
@@ -408,8 +399,9 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
     )
   }
   describe ("Four spaces is too much:") {
-    setextHeading shouldNotParse (
-      "Foo\n    ----\n"
+    mdSetextParagraph shouldParseWith (
+      "f\n    ----\n\u0000",
+      List(Paragraph("f\n----\n"))
     )
   }
   describe ("The setext heading underline cannot contain internal spaces:") {
@@ -467,74 +459,74 @@ class MarkdownParserTests extends FunSpec with Matchers with CustomMatchers {
   if(blockQuoteTests){
     describe("the parser should parse a heading or a paragraph") {
       mdAtxParagraph shouldParseWith(
-        "paragraph\n\u0000",
-        List(Paragraph("paragraph\n"))
+        "p\n\u0000",
+        List(Paragraph("p\n"))
       )
       mdAtxParagraph shouldParseWith(
-        "# heading\n\u0000",
-        List(Heading(1, "heading"))
+        "# h\n\u0000",
+        List(Heading(1, "h"))
       )
     }
     describe("the parser shoud greedy read a paragraph") {
       mdAtxParagraph shouldParseWith(
-        "paragraph\ntest\n\u0000",
-        List(Paragraph("paragraph\ntest\n"))
+        "p\nt\n\u0000",
+        List(Paragraph("p\nt\n"))
       )
       mdAtxParagraph shouldParseWith(
-        "paragraph\nasdf\n# heading\n\u0000",
-        List(Paragraph("paragraph\nasdf\n"), Heading(1,"heading"))
+        "p\na\n# h\n\u0000",
+        List(Paragraph("p\na\n"), Heading(1,"h"))
       )
     }
     describe("the parser shoud read a atxHeading bevor a paragraph") {
       mdAtxParagraph shouldParseWith(
-        "# heading\nparagraph\n\u0000",
-        List(Heading(1, "heading"),Paragraph("paragraph\n"))
+        "# h\np\n\u0000",
+        List(Heading(1, "h"),Paragraph("p\n"))
       )
     }
     describe("the parser shoud get broaken by an ATX heading") {
       mdAtxParagraph shouldParseWith(
-        "paragraph\n# heading\n\u0000",
-        List(Paragraph("paragraph\n"),Heading(1, "heading"))
+        "p\n# h\n\u0000",
+        List(Paragraph("p\n"),Heading(1, "h"))
       )
     }
     describe("a paragraph should can be surrounded by empty lines") {
       mdEmptyParagraph shouldParseWith(
-        "paragraph\n\n\u0000",
-        List(Paragraph("paragraph\n"), EmptyLine())
+        "p\n\n\u0000",
+        List(Paragraph("p\n"), EmptyLine())
       )
       mdEmptyParagraph shouldParseWith(
-        "\nparagraph\n\u0000",
-        List(EmptyLine(), Paragraph("paragraph\n"))
+        "\np\n\u0000",
+        List(EmptyLine(), Paragraph("p\n"))
       )
     }
     describe("a paragraph can be inside of a blockQuote") {
       mdBlockParagraph shouldParseWith(
-        "> paragraph\n\u0000",
-        List(BlockQuote(List(Paragraph("paragraph\n"))))
+        "> p\n\u0000",
+        List(BlockQuote(List(Paragraph("p\n"))))
       )
     }
     describe("a blockQuote can be inside of a blockQuote") {
       mdBlockParagraph shouldParseWith(
-        "> > paragraph\n\u0000",
-        List(BlockQuote(List(BlockQuote(List(Paragraph("paragraph\n"))))))
+        "> > p\n\u0000",
+        List(BlockQuote(List(BlockQuote(List(Paragraph("p\n"))))))
       )
-    }/*
+    }
     describe("a blockQuote can be multiline") {
       mdBlockParagraph shouldParseWith(
-        "> paragraph\n> paragraph\n\u0000",
-        List(BlockQuote(List(Paragraph("paragraph\nparagraph\n"))))
+        "> p\n> p\n\u0000",
+        List(BlockQuote(List(Paragraph("p\np\n"))))
       )
-    }*/
+    }
     describe("a setextHeading is not a paragraph") {
       mdSetextParagraph shouldParseWith(
-        "setextheading\n---\n\u0000",
-        List(Heading(2,"setextheading\n"))
+        "s\n---\n\u0000",
+        List(Heading(2,"s\n"))
       )
     }
     describe("a setextHeading is not a paragraph but can followed by a paragraph") {
       mdSetextParagraph shouldParseWith(
-        "setextheading\n---\nparagraph\n\u0000",
-        List(Heading(2,"setextheading\n"), Paragraph("paragraph\n"))
+        "s\n---\np\n\u0000",
+        List(Heading(2,"s\n"), Paragraph("p\n"))
       )
     }
   }
