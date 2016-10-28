@@ -1,0 +1,71 @@
+Into:
+  - Abstract
+    - Deutsch und Englisch
+    - am ende schreiben?
+      - evt beides!
+Introduction:
+  - Problem beschreiben
+    - für jeden zoomlevel ein paar sätze
+    - später in paragraphen umwandeln
+    - Def modularität aus primärliteratur zum drauf beziehen(parnas ~1972 " on decomposing software into modules")
+      - SMD / IMD ??
+    - Def eweiterbarkeit aus ....
+    - zusammenhang modularität und erweiterbarket (parnas zusammenhang zu erweiterbarkeit anders als üblich  / seperate comailation)
+  - state of the art beschreiben
+    - parsen von markdown
+    - Spezifikation
+    - Algo in spezi
+    - Nach markdown parser implementierungen suchen
+      - alle handgeschrieben? oder aus framework oder in combinator prachen implementiert
+    - wie leicht ist es neue module hinzuzufügen
+  - aufbau (darstellung eines Problems => darstellung einer Lösung)
+
+Hauptteil:
+  - Problem beschreiben
+  - Relatet work
+    - Wann bring ich die Background Infostring
+    - Tabelle parser implementationen was kann welche implementation
+  - Thesis
+  - Lösung
+    - Entweder incrementell mit dem leser entwickeln
+    - verschiedene module entwickeln
+  - Diskussion
+    - vor nachteile
+    - was konnte nicht gelöst werden / future work
+      - lazy continuation line,
+    - abgränzen warum das neu ist
+
+Conclusion
+  - abschluss, kurze zusammenfasssung
+
+
+allgemeine Reihnfolge
+
+Fenced Code Block / Indented Code Block / BlockQuote / Thematic Break / ATX Heading / Settext Heading / Paragraph
+
+wird gebrochen von:
+Thematic Breaks
+  - Nichts
+ATX headings
+  - Nichts
+SettextHeadings
+  - Nichts
+Indeted Code Block
+  - Nichts
+Fenced Code Block
+  - Nichts außer closing fence
+Paragraph
+  - SettextHeading
+  - ATX Heading
+  - Thematic Breaks
+  - NOT INDETED CODE BLOCK
+  - fenced Code Block
+  - Blank Line
+  - Block Quote
+  - List Items
+  - Lists
+
+Block Quotes
+  - Wenn nicht Lazy Continuation dann durch nichts
+List Items
+Lists

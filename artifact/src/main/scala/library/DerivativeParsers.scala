@@ -18,6 +18,8 @@ trait DerivativeParsers extends Parsers { self: DerivedOps =>
 
     def alt[U >: R](q: Parser[U]): Parser[U] = q alt2 p
     def alt2[U >: R](q: Parser[U]): Parser[U] = new Alt(q, p)
+    def biasedAlt[U >: R](q: Parser[U]): Parser[U] = q biasedAlt2 p
+    def biasedAlt2[U >: R](q: Parser[U]): Parser[U] = new BiasedAlt(q, p)
     def and[U](q: Parser[U]): Parser[(R, U)] = q and2 p
     def and2[U](q: Parser[U]): Parser[(U, R)] = new And(q, p)
     def seq[U](q: Parser[U]): Parser[R ~ U] = q seq2 p
@@ -50,6 +52,8 @@ trait DerivativeParsers extends Parsers { self: DerivedOps =>
 
     override def alt[U >: Nothing](q: Parser[U]): q.type = q
     override def alt2[U >: Nothing](q: Parser[U]): q.type = q
+    override def biasedAlt[U >: Nothing](q: Parser[U]): q.type = q
+    override def biasedAlt2[U >: Nothing](q: Parser[U]): q.type = q
     override def seq[U](q: Parser[U]): this.type = this
     override def seq2[U](q: Parser[U]): this.type = this
     override def and[U](q: Parser[U]): this.type = this
@@ -142,6 +146,14 @@ trait DerivativeParsers extends Parsers { self: DerivedOps =>
     // optimization for not(p | map(always))
     override def not = (p.not and q.not) withResults List(())
     override def toString = s"($p | $q)"
+  }
+  class BiasedAlt[R, U >: R](val p: Parser[R], val q: Parser[U]) extends BinaryPrintable("<|", p, q) with Parser[U] {
+    def results = if(p.accepts) p.results else q.results
+    def failed  = p.failed && q.failed
+    def accepts = p.accepts || q.accepts
+    def consume = (in: Elem) => (p consume in) biasedAlt (q consume in)
+
+    override def toString = s"($p <| $q)"
   }
 
   class Seq[R, U](val p: Parser[R], val q: Parser[U]) extends BinaryPrintable("~", p, q) with Parser[R ~ U] {
@@ -332,6 +344,7 @@ trait DerivativeParsers extends Parsers { self: DerivedOps =>
   def flatMap[R, U](p: Parser[R], f: R => Parser[U]) = p flatMap f
 
   def alt[R, U >: R](p: Parser[R], q: Parser[U]) = p alt q
+  def biasedAlt2[R, U >: R](p: Parser[R], q: Parser[U]) = p biasedAlt q
   def seq[R, U](p: Parser[R], q: Parser[U]) = p seq q
   def and[R, U](p: Parser[R], q: Parser[U]): Parser[(R, U)] = p and q
 
